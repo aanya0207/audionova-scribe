@@ -22,6 +22,10 @@ serve(async (req) => {
       throw new Error("Text content is required");
     }
 
+    if (!elevenLabsApiKey) {
+      throw new Error("ElevenLabs API key is not configured");
+    }
+
     // Default to a specific voice if not provided based on the voice type
     let selectedVoiceId = voiceId;
     if (!selectedVoiceId) {
@@ -40,13 +44,15 @@ serve(async (req) => {
       }
     }
 
+    console.log(`Generating speech for voice ${selectedVoiceId}, text length: ${text.length} characters`);
+
     // Call ElevenLabs API to generate audio
     const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selectedVoiceId}`, {
       method: 'POST',
       headers: {
         'Accept': 'audio/mpeg',
         'Content-Type': 'application/json',
-        'xi-api-key': elevenLabsApiKey || '',
+        'xi-api-key': elevenLabsApiKey,
       },
       body: JSON.stringify({
         text: text,
@@ -71,6 +77,8 @@ serve(async (req) => {
     const audioBase64 = btoa(
       String.fromCharCode(...new Uint8Array(audioArrayBuffer))
     );
+
+    console.log('Successfully generated audio');
 
     return new Response(
       JSON.stringify({ 
