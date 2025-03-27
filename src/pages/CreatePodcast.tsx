@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mic, Sparkles, Upload, Image, RefreshCw, Volume2, FileAudio } from 'lucide-react';
@@ -380,7 +381,7 @@ const CreatePodcast = () => {
       setPreviewAudio(null);
       setUploadedAudioFile(null);
       
-      navigate('/profile');
+      navigate('/explore');
     } catch (error) {
       console.error("Form submission error:", error);
       toast({
@@ -412,44 +413,47 @@ const CreatePodcast = () => {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className="glass-card p-6 rounded-lg space-y-6">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Podcast Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter a compelling title for your podcast" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+            <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Podcast Title</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a category" />
-                      </SelectTrigger>
+                      <Input placeholder="Enter a compelling title for your podcast" {...field} />
                     </FormControl>
-                    <SelectContent>
-                      {categories.map(category => (
-                        <SelectItem key={category} value={category}>{category}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categories.map(category => (
+                          <SelectItem key={category} value={category}>{category}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             
-            <div className="grid gap-6 md:grid-cols-2">
+            {/* Script generation section */}
+            <div className="space-y-4">
               <FormField
                 control={form.control}
                 name="prompt"
@@ -484,99 +488,97 @@ const CreatePodcast = () => {
                 )}
               />
               
-              <div className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="thumbnailPrompt"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Thumbnail Prompt</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Describe what you want your thumbnail to look like"
-                          className="h-24 resize-none" 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Optional: Provide a specific prompt for the AI to generate your thumbnail
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="script"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Generated Podcast Script</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Your generated script will appear here" 
+                        className="min-h-[200px]" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
             
-            <FormField
-              control={form.control}
-              name="thumbnailUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex justify-between items-center">
-                    <FormLabel>Thumbnail</FormLabel>
-                    <Button 
-                      type="button"
-                      variant="outline" 
-                      size="sm"
-                      onClick={handleGenerateThumbnail}
-                      disabled={isGeneratingThumbnail}
-                      className="flex gap-1 h-8"
-                    >
-                      {isGeneratingThumbnail ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Image className="h-3 w-3" />}
-                      {isGeneratingThumbnail ? 'Generating...' : 'Generate Image'}
-                    </Button>
-                  </div>
-                  {field.value ? (
-                    <div className="relative aspect-video rounded-md overflow-hidden border border-input">
-                      <img 
-                        src={field.value} 
-                        alt="Podcast thumbnail" 
-                        className="w-full h-full object-cover"
-                      />
+            {/* Thumbnail generation section */}
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="thumbnailPrompt"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex justify-between items-center">
+                      <FormLabel>Thumbnail Prompt</FormLabel>
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleGenerateThumbnail}
+                        disabled={isGeneratingThumbnail}
+                        className="flex gap-1 h-8"
+                      >
+                        {isGeneratingThumbnail ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Image className="h-3 w-3" />}
+                        {isGeneratingThumbnail ? 'Generating...' : 'Generate Thumbnail'}
+                      </Button>
                     </div>
-                  ) : (
                     <FormControl>
-                      <div className="border border-dashed border-muted-foreground/20 rounded-lg p-4 text-center aspect-video flex flex-col items-center justify-center">
-                        <Image className="h-8 w-8 text-muted-foreground mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          Generate a thumbnail or enter image URL
-                        </p>
-                      </div>
+                      <Textarea 
+                        placeholder="Describe what you want your thumbnail to look like (e.g., 'A vibrant image of the Eiffel Tower at sunset with warm hues')"
+                        className="h-24 resize-none" 
+                        {...field} 
+                      />
                     </FormControl>
-                  )}
-                  <FormControl>
-                    <Input
-                      placeholder="Or enter image URL manually" 
-                      {...field}
-                      className="mt-2"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="script"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Podcast Script</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Write or generate your podcast script" 
-                      className="min-h-[200px]" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    This is the full script your podcast will be based on
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormDescription>
+                      Be specific about landmarks, colors, style, and mood for best results
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="thumbnailUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Generated Thumbnail</FormLabel>
+                    {field.value ? (
+                      <div className="relative aspect-video rounded-md overflow-hidden border border-input">
+                        <img 
+                          src={field.value} 
+                          alt="Podcast thumbnail" 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <FormControl>
+                        <div className="border border-dashed border-muted-foreground/20 rounded-lg p-4 text-center aspect-video flex flex-col items-center justify-center">
+                          <Image className="h-8 w-8 text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">
+                            Generate a thumbnail or enter image URL
+                          </p>
+                        </div>
+                      </FormControl>
+                    )}
+                    <FormControl>
+                      <Input
+                        placeholder="Or enter image URL manually" 
+                        {...field}
+                        className="mt-2"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             
             <FormField
               control={form.control}

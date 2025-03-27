@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -34,7 +35,7 @@ serve(async (req) => {
         const finalPrompt = thumbnailPrompt || enhanceThumbnailPrompt(prompt, title, category);
         console.log(`Generating thumbnail with prompt: ${finalPrompt}`);
         
-        // Get a relevant image URL with better context awareness
+        // Use a more precise thumbnail generation based on specific keywords 
         const imageUrl = await getContextualUnsplashImage(finalPrompt);
         
         return new Response(JSON.stringify({ imageUrl }), {
@@ -60,28 +61,28 @@ serve(async (req) => {
 function enhanceThumbnailPrompt(prompt: string, title: string, category: string): string {
   // Create a more specific prompt for better thumbnail generation
   if (prompt && prompt.length > 10) {
-    return `Professional podcast cover art for: ${prompt}`;
+    return `Professional podcast cover art visual representation of: ${prompt}`;
   } else if (title && title.length > 3) {
-    return `High-quality podcast thumbnail for "${title}"`;
+    return `High-quality podcast thumbnail representing "${title}"`;
   } else if (category) {
     // Map categories to specific visual styles
     const categoryPromptMap: Record<string, string> = {
-      'Technology': 'Modern, digital podcast artwork with tech elements',
-      'Business': 'Professional corporate podcast cover with business theme',
-      'Health': 'Wellness and health podcast thumbnail with calming elements',
-      'Education': 'Educational podcast cover with learning symbols',
-      'Art': 'Creative and artistic podcast thumbnail with vibrant colors',
-      'Science': 'Scientific podcast cover with research and discovery theme',
-      'Finance': 'Financial podcast thumbnail with business graphs and charts',
-      'Entertainment': 'Dynamic entertainment podcast cover with exciting elements',
-      'Sports': 'Athletic podcast thumbnail with action and energy',
-      'Politics': 'Political podcast cover with neutral balanced imagery',
-      'History': 'Historical podcast thumbnail with vintage aesthetic',
-      'Travel': 'Adventure podcast cover with exploration elements',
-      'Food': 'Culinary podcast thumbnail with appetizing visuals',
-      'Fashion': 'Stylish fashion podcast cover with trendy elements',
-      'Music': 'Musical podcast thumbnail with audio visualizer elements',
-      'Movies': 'Cinematic podcast cover with film reel aesthetics'
+      'Technology': 'Modern, digital podcast artwork with tech elements and circuit patterns',
+      'Business': 'Professional corporate podcast cover with business theme, office elements, and charts',
+      'Health': 'Wellness and health podcast thumbnail with calming elements, healthy lifestyle imagery',
+      'Education': 'Educational podcast cover with learning symbols, books, and graduation elements',
+      'Art': 'Creative and artistic podcast thumbnail with vibrant colors, paintbrushes, and artistic elements',
+      'Science': 'Scientific podcast cover with research and discovery theme, lab equipment, and molecular structures',
+      'Finance': 'Financial podcast thumbnail with business graphs, charts, and currency symbols',
+      'Entertainment': 'Dynamic entertainment podcast cover with exciting elements, stage lights, and performance imagery',
+      'Sports': 'Athletic podcast thumbnail with action, sports equipment, and energy symbols',
+      'Politics': 'Political podcast cover with neutral balanced imagery, government buildings, and flag elements',
+      'History': 'Historical podcast thumbnail with vintage aesthetic, old documents, and timeline elements',
+      'Travel': 'Adventure podcast cover with exploration elements, maps, and scenic landscapes',
+      'Food': 'Culinary podcast thumbnail with appetizing food visuals, cooking ingredients, and kitchen elements',
+      'Fashion': 'Stylish fashion podcast cover with trendy elements, clothing items, and runway imagery',
+      'Music': 'Musical podcast thumbnail with audio visualizer elements, instruments, and music notes',
+      'Movies': 'Cinematic podcast cover with film reel aesthetics, clapperboard, and camera elements'
     };
     
     return categoryPromptMap[category] || `Professional podcast cover for ${category} topic`;
@@ -121,7 +122,48 @@ function generateMockScript(prompt: string, title: string, category: string) {
 
 async function getContextualUnsplashImage(query: string) {
   // Enhanced function to get more relevant images based on context
-  // In production, this would use the Unsplash API with proper attribution
+  
+  // First, parse the query to identify specific landmarks or objects
+  const landmarks = [
+    { keywords: ['eiffel tower', 'paris', 'france monument'], images: [
+      'https://images.unsplash.com/photo-1511739001486-6bfe10ce785f',
+      'https://images.unsplash.com/photo-1543349689-9a4d426bee8e',
+      'https://images.unsplash.com/photo-1503917988258-f87a78e3c995',
+    ]},
+    { keywords: ['statue of liberty', 'new york', 'liberty island'], images: [
+      'https://images.unsplash.com/photo-1485738422979-f5c462d49f74',
+      'https://images.unsplash.com/photo-1492217072584-7ff26c10eb75',
+    ]},
+    { keywords: ['grand canyon', 'arizona', 'national park'], images: [
+      'https://images.unsplash.com/photo-1615551043360-33de8b5f410c',
+      'https://images.unsplash.com/photo-1575527048208-933d23616532',
+    ]},
+    { keywords: ['great wall', 'china', 'chinese wall'], images: [
+      'https://images.unsplash.com/photo-1508804052814-cd3ba865a116',
+      'https://images.unsplash.com/photo-1549468057-5b7fa1a41d7a',
+    ]},
+    { keywords: ['taj mahal', 'india', 'agra'], images: [
+      'https://images.unsplash.com/photo-1564507592333-c60657eea523',
+      'https://images.unsplash.com/photo-1548013146-72479768bada',
+    ]},
+    { keywords: ['pyramids', 'egypt', 'giza'], images: [
+      'https://images.unsplash.com/photo-1503177119275-0aa32b3a9368',
+      'https://images.unsplash.com/photo-1539768942893-daf53e448371',
+    ]},
+    { keywords: ['colosseum', 'rome', 'roman'], images: [
+      'https://images.unsplash.com/photo-1552832230-c0197dd311b5',
+      'https://images.unsplash.com/photo-1626275321498-c0b9ada66843',
+    ]},
+  ];
+  
+  // Look for matches with specific landmarks
+  const queryLower = query.toLowerCase();
+  for (const landmark of landmarks) {
+    if (landmark.keywords.some(keyword => queryLower.includes(keyword))) {
+      const randomIndex = Math.floor(Math.random() * landmark.images.length);
+      return `${landmark.images[randomIndex]}?auto=format&fit=crop&w=800&h=450&q=80`;
+    }
+  }
   
   // Create a mapping of more specific search terms for better results
   const imagesByCategory: Record<string, string[]> = {
@@ -208,14 +250,13 @@ async function getContextualUnsplashImage(query: string) {
       'https://images.unsplash.com/photo-1590602847861-f357a9332bbc',
       'https://images.unsplash.com/photo-1478737270239-2f02b77fc618',
       'https://images.unsplash.com/photo-1526128034903-1f149c291f59',
-      'https://images.unsplash.com/photo-1599323293366-9a75065cef31',
+      'https://images.unsplash.com/photo-1599323293366-0aa32b3a9368',
       'https://images.unsplash.com/photo-1484069560501-87d72b0c3669',
       'https://images.unsplash.com/photo-1512621776951-a57141f2eefd',
     ]
   };
   
   // Try to find the best matching category
-  const queryLower = query.toLowerCase();
   let category = 'default';
   
   // Map specific keywords to categories

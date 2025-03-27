@@ -11,13 +11,17 @@ import PodcastCardSkeleton from '@/components/ui/podcast-card-skeleton';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { useToast } from '@/components/ui/use-toast';
 import { useAudioPlayer } from '@/context/AudioPlayerContext';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
 
 const categories = ['All', 'Business', 'Health', 'Education', 'Art', 'Science', 'Finance', 'Technology', 'Entertainment'];
-const sortOptions = [
-  { value: 'newest', label: 'Newest' },
-  { value: 'popular', label: 'Popular' },
-  { value: 'duration', label: 'Duration' },
-];
 
 const Explore = () => {
   const { toast } = useToast();
@@ -38,9 +42,41 @@ const Explore = () => {
 
   const { data: podcasts, isLoading, isError } = usePodcasts(filters);
 
+  // Get user created podcasts from localStorage
+  const userPodcasts = JSON.parse(localStorage.getItem('userPodcasts') || '[]');
+  
+  // Combine API podcasts with user created podcasts
+  const allPodcasts = React.useMemo(() => {
+    if (!podcasts) return [];
+    
+    // Filter user podcasts by selected category if needed
+    const filteredUserPodcasts = userPodcasts.filter((podcast: any) => 
+      selectedCategory === 'All' || podcast.category === selectedCategory
+    );
+    
+    // Sort all podcasts based on selected sort option
+    const combined = [...podcasts, ...filteredUserPodcasts];
+    
+    if (selectedSort === 'newest') {
+      return combined.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+    } else if (selectedSort === 'popular') {
+      // For demo, we'll use the podcast ID as a proxy for popularity
+      return combined.sort((a, b) => parseInt(b.id) - parseInt(a.id));
+    } else if (selectedSort === 'duration') {
+      // Sort by duration - convert "X min" to number
+      return combined.sort((a, b) => {
+        const durationA = parseInt(a.duration?.replace(' min', '') || '0');
+        const durationB = parseInt(b.duration?.replace(' min', '') || '0');
+        return durationB - durationA;
+      });
+    }
+    
+    return combined;
+  }, [podcasts, userPodcasts, selectedCategory, selectedSort]);
+
   // Pagination logic
-  const totalPages = podcasts ? Math.ceil(podcasts.length / podcastsPerPage) : 0;
-  const paginatedPodcasts = podcasts?.slice(
+  const totalPages = allPodcasts ? Math.ceil(allPodcasts.length / podcastsPerPage) : 0;
+  const paginatedPodcasts = allPodcasts?.slice(
     (currentPage - 1) * podcastsPerPage,
     currentPage * podcastsPerPage
   );
@@ -51,11 +87,11 @@ const Explore = () => {
       id: podcast.id,
       title: podcast.title,
       description: podcast.description,
-      thumbnailUrl: podcast.imageUrl,
-      creatorName: podcast.author,
+      thumbnailUrl: podcast.imageUrl || podcast.thumbnailUrl,
+      creatorName: podcast.author || podcast.creatorName,
       duration: podcast.duration,
       category: podcast.category,
-      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-' + (parseInt(podcast.id) % 16 + 1) + '.mp3'
+      audioUrl: podcast.audioUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-' + (parseInt(podcast.id) % 16 + 1) + '.mp3'
     });
   };
 
@@ -101,22 +137,39 @@ const Explore = () => {
           </div>
           
           <div className="flex gap-2">
-            <select 
-              className="bg-background border border-input rounded-md px-2 py-1 text-sm"
-              value={selectedSort}
-              onChange={(e) => setSelectedSort(e.target.value as 'newest' | 'popular' | 'duration')}
-            >
-              {sortOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            
-            <Button variant="outline" size="sm" className="flex gap-1">
-              <Filter className="h-4 w-4" />
-              Filter
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="flex gap-1">
+                  <Filter className="h-4 w-4" />
+                  Filter
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56 bg-popover">
+                <DropdownMenuLabel>Sort & Filter</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">Sort by</DropdownMenuLabel>
+                  <DropdownMenuItem 
+                    className={selectedSort === 'newest' ? 'bg-accent' : ''}
+                    onClick={() => setSelectedSort('newest')}
+                  >
+                    Newest
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    className={selectedSort === 'popular' ? 'bg-accent' : ''}
+                    onClick={() => setSelectedSort('popular')}
+                  >
+                    Popular
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    className={selectedSort === 'duration' ? 'bg-accent' : ''}
+                    onClick={() => setSelectedSort('duration')}
+                  >
+                    Duration
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
@@ -175,8 +228,8 @@ const Explore = () => {
                 id={podcast.id}
                 title={podcast.title}
                 description={podcast.description}
-                thumbnailUrl={podcast.imageUrl}
-                creatorName={podcast.author}
+                thumbnailUrl={podcast.imageUrl || podcast.thumbnailUrl}
+                creatorName={podcast.author || podcast.creatorName}
                 duration={podcast.duration}
                 category={podcast.category}
                 onClick={() => handlePlayPodcast(podcast)}
