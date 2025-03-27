@@ -3,6 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import { Toaster } from '@/components/ui/toaster';
 
 const MainLayout = () => {
   return (
@@ -19,6 +20,7 @@ const MainLayout = () => {
           <Outlet />
         </div>
       </motion.main>
+      <Toaster />
     </div>
   );
 };
