@@ -127,7 +127,7 @@ async function getContextualUnsplashImage(query: string) {
   const imagesByCategory: Record<string, string[]> = {
     'technology': [
       'https://images.unsplash.com/photo-1550751827-4bd374c3f58b',
-      'https://images.unsplash.com/photo-1518770660439-4636190af475',
+      'https://images.unsplash.com/photo-1518770660439-afdab827c52f',
       'https://images.unsplash.com/photo-1531297484001-80022131f5a1',
       'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b',
       'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5',
@@ -152,7 +152,7 @@ async function getContextualUnsplashImage(query: string) {
     'education': [
       'https://images.unsplash.com/photo-1503676260728-1c00da094a0b',
       'https://images.unsplash.com/photo-1523050854058-8df90110c9f1',
-      'https://images.unsplash.com/photo-1488190211105-8b0e65b80b4e',
+      'https://images.unsplash.com/photo-1488190287605-e6ade32fa852',
       'https://images.unsplash.com/photo-1524178232363-1fb2b075b655',
       'https://images.unsplash.com/photo-1497633762265-9d179a990aa6',
       'https://images.unsplash.com/photo-1509062522246-3755977927d7',

@@ -17,6 +17,8 @@ import Explore from "./pages/Explore";
 import CreatePodcast from "./pages/CreatePodcast";
 import Profile from "./pages/Profile";
 import Analytics from "./pages/Analytics";
+import Settings from "./pages/Settings";
+import Help from "./pages/Help";
 import { AudioPlayerProvider } from "./context/AudioPlayerContext";
 import AudioPlayer from "./components/ui/audio-player";
 
@@ -71,8 +73,8 @@ const App = () => (
                   <Route path="/create" element={<CreatePodcast />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/analytics" element={<Analytics />} />
-                  <Route path="/settings" element={<Home />} /> {/* Placeholder */}
-                  <Route path="/help" element={<Home />} /> {/* Placeholder */}
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/help" element={<Help />} />
                 </Route>
                 
                 {/* Catch-all route for 404 */}

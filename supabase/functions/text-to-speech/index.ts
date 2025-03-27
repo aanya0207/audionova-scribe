@@ -50,52 +50,58 @@ serve(async (req) => {
     // Typically around 5000 characters is safe
     const trimmedText = text.substring(0, 4000);
     
-    // Call ElevenLabs API to generate audio
-    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selectedVoiceId}`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'audio/mpeg',
-        'Content-Type': 'application/json',
-        'xi-api-key': elevenLabsApiKey,
-      },
-      body: JSON.stringify({
-        text: trimmedText,
-        model_id: 'eleven_monolingual_v1',
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.5
-        }
-      }),
-    });
+    try {
+      // Call ElevenLabs API to generate audio
+      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selectedVoiceId}`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'audio/mpeg',
+          'Content-Type': 'application/json',
+          'xi-api-key': elevenLabsApiKey,
+        },
+        body: JSON.stringify({
+          text: trimmedText,
+          model_id: 'eleven_monolingual_v1',
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.5
+          }
+        }),
+      });
 
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('ElevenLabs API error:', errorData);
-      throw new Error(`Failed to generate speech: ${response.status}`);
-    }
-
-    // Get the audio as an array buffer
-    const audioArrayBuffer = await response.arrayBuffer();
-    
-    // Convert to base64 for easy transport
-    const audioBase64 = btoa(
-      String.fromCharCode(...new Uint8Array(audioArrayBuffer))
-    );
-
-    console.log('Successfully generated audio');
-
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        audioUrl: `data:audio/mpeg;base64,${audioBase64}`
-      }),
-      { 
-        headers: { 
-          ...corsHeaders,
-          'Content-Type': 'application/json' 
-        } 
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('ElevenLabs API error:', errorData);
+        throw new Error(`Failed to generate speech: ${response.status}`);
       }
-    );
+
+      // Get the audio as an array buffer
+      const audioArrayBuffer = await response.arrayBuffer();
+      
+      // Convert to base64 for easy transport
+      const audioBase64 = btoa(
+        new Uint8Array(audioArrayBuffer)
+          .reduce((data, byte) => data + String.fromCharCode(byte), '')
+      );
+
+      console.log('Successfully generated audio');
+
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          audioUrl: `data:audio/mpeg;base64,${audioBase64}`
+        }),
+        { 
+          headers: { 
+            ...corsHeaders,
+            'Content-Type': 'application/json' 
+          } 
+        }
+      );
+    } catch (error) {
+      console.error('ElevenLabs API error:', error);
+      throw new Error(`ElevenLabs API error: ${error.message}`);
+    }
   } catch (error) {
     console.error('Text-to-speech error:', error);
     
