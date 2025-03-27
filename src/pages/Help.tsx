@@ -354,7 +354,7 @@ const Help = () => {
                   <SelectTrigger className="w-full" id="feedback-type">
                     <SelectValue placeholder="Select feedback type" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-popover border border-border z-50">
                     <SelectItem value="suggestion">Feature Suggestion</SelectItem>
                     <SelectItem value="bug">Bug Report</SelectItem>
                     <SelectItem value="improvement">Improvement Idea</SelectItem>
