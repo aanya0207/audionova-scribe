@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 import MainLayout from "./components/Layout/MainLayout";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
+import Explore from "./pages/Explore";
 
 const queryClient = new QueryClient();
 
@@ -53,8 +54,7 @@ const App = () => (
                 }
               >
                 <Route path="/home" element={<Home />} />
-                {/* Additional routes will be added as we develop them */}
-                <Route path="/explore" element={<Home />} /> {/* Placeholder */}
+                <Route path="/explore" element={<Explore />} /> {/* Updated: Now using our new Explore component */}
                 <Route path="/create" element={<Home />} /> {/* Placeholder */}
                 <Route path="/profile" element={<Home />} /> {/* Placeholder */}
                 <Route path="/analytics" element={<Home />} /> {/* Placeholder */}
