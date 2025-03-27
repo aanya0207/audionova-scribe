@@ -67,6 +67,7 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }
 
       // Set the new audio source and play
+      // Handle both regular URLs and data URLs (base64 encoded from TTS)
       audioRef.current.src = podcast.audioUrl;
       audioRef.current.play()
         .then(() => {

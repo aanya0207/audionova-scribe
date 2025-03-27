@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mic, Sparkles, Upload, Image, RefreshCw } from 'lucide-react';
+import { Mic, Sparkles, Upload, Image, RefreshCw, Volume2, FileAudio } from 'lucide-react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Progress } from "@/components/ui/progress";
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
@@ -67,7 +68,12 @@ const CreatePodcast = () => {
   const navigate = useNavigate();
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewAudio, setPreviewAudio] = useState<string | null>(null);
+  const [uploadedAudioFile, setUploadedAudioFile] = useState<File | null>(null);
   
   // Form definition
   const form = useForm<z.infer<typeof formSchema>>({
@@ -87,7 +93,9 @@ const CreatePodcast = () => {
   // Watch form values for AI generation
   const title = form.watch("title");
   const prompt = form.watch("prompt");
+  const script = form.watch("script");
   const category = form.watch("category");
+  const voiceType = form.watch("voiceType");
   
   // Generate script with AI
   const handleGenerateScript = async () => {
@@ -122,11 +130,6 @@ const CreatePodcast = () => {
           const plainText = data.script.replace(/#+\s+.*\n/g, '').replace(/\n/g, ' ').trim();
           form.setValue("description", plainText.substring(0, 150) + '...');
         }
-        
-        // Assign a real podcast audio URL based on the category
-        let podcastUrls = realPodcastEpisodes[category] || realPodcastEpisodes.Default;
-        const randomIndex = Math.floor(Math.random() * podcastUrls.length);
-        form.setValue("audioUrl", podcastUrls[randomIndex]);
         
         toast({
           title: "Script Generated",
@@ -211,21 +214,121 @@ const CreatePodcast = () => {
       setIsGeneratingThumbnail(false);
     }
   };
-  
+
+  // Generate audio from script using text-to-speech
+  const handleGenerateAudio = async () => {
+    const currentScript = form.getValues("script");
+    const currentVoiceType = form.getValues("voiceType");
+    
+    if (!currentScript) {
+      toast({
+        title: "Script Required",
+        description: "Please generate or write a script first",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Get a shorter version of the script for audio generation
+    // ElevenLabs has character limits, so we'll use just the first part
+    const shortScript = currentScript.substring(0, 4000);
+    
+    setIsGeneratingAudio(true);
+    setPreviewAudio(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: {
+          text: shortScript,
+          voiceType: currentVoiceType
+        }
+      });
+      
+      if (error) throw new Error(error.message);
+      
+      if (data && data.audioUrl) {
+        form.setValue("audioUrl", data.audioUrl);
+        setPreviewAudio(data.audioUrl);
+        
+        toast({
+          title: "Audio Generated",
+          description: "Text-to-speech conversion successful"
+        });
+      }
+    } catch (error) {
+      console.error("Audio generation error:", error);
+      toast({
+        title: "Audio Generation Failed",
+        description: error instanceof Error ? error.message : "Failed to generate audio",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingAudio(false);
+    }
+  };
+
+  // Handle audio file upload
+  const handleAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    // Check if the file is an audio file
+    if (!file.type.startsWith('audio/')) {
+      toast({
+        title: "Invalid File",
+        description: "Please upload an audio file (MP3, WAV, etc.)",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setUploadedAudioFile(file);
+    
+    // Create a URL for the audio file for preview
+    const audioUrl = URL.createObjectURL(file);
+    setPreviewAudio(audioUrl);
+    
+    // Since we're now using the uploaded file, we need to handle this in form submission
+    // We don't set the audioUrl in the form yet, as we need to upload it properly during submission
+    toast({
+      title: "Audio Uploaded",
+      description: "Your audio file is ready to be used"
+    });
+  };
+
   // Form submission - now saves to user's profile
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
+    setUploadProgress(0);
     
     try {
       if (!user) {
         throw new Error("You must be logged in to publish a podcast");
       }
       
-      // If audioUrl is not set, assign a default one based on category
-      if (!values.audioUrl) {
+      let finalAudioUrl = values.audioUrl;
+      
+      // If we have an uploaded file, we need to handle it
+      // In a real app, this would upload to a storage service
+      // For demo purposes, we're using the ObjectURL or simulating the upload
+      if (uploadedAudioFile) {
+        // Simulate a file upload with progress
+        for (let i = 0; i <= 100; i += 10) {
+          setUploadProgress(i);
+          // Simulate network delay
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        
+        // In a real app, we would upload the file here and get a URL
+        // For the demo, we'll just use the ObjectURL
+        finalAudioUrl = URL.createObjectURL(uploadedAudioFile);
+      } 
+      // If no audio is provided (neither generated nor uploaded)
+      else if (!finalAudioUrl) {
+        // Assign a default one based on category
         const podcastUrls = realPodcastEpisodes[values.category] || realPodcastEpisodes.Default;
         const randomIndex = Math.floor(Math.random() * podcastUrls.length);
-        values.audioUrl = podcastUrls[randomIndex];
+        finalAudioUrl = podcastUrls[randomIndex];
       }
       
       // Create a new podcast object
@@ -237,7 +340,7 @@ const CreatePodcast = () => {
         creatorName: user.fullName || 'Anonymous Creator',
         duration: Math.floor(15 + Math.random() * 35) + ' min', // Random duration between 15-50 min
         category: values.category,
-        audioUrl: values.audioUrl,
+        audioUrl: finalAudioUrl,
         createdAt: new Date().toISOString(),
         userId: user.id
       };
@@ -255,6 +358,8 @@ const CreatePodcast = () => {
       
       // Reset form
       form.reset();
+      setPreviewAudio(null);
+      setUploadedAudioFile(null);
       
       // Navigate to profile page to see the new podcast
       navigate('/profile');
@@ -267,6 +372,7 @@ const CreatePodcast = () => {
       });
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(0);
     }
   };
 
@@ -488,6 +594,62 @@ const CreatePodcast = () => {
                 </FormItem>
               )}
             />
+
+            <div className="space-y-4 border-t border-white/10 pt-6">
+              <FormLabel>Audio</FormLabel>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleGenerateAudio}
+                  disabled={isGeneratingAudio || !script}
+                  className="flex gap-2"
+                >
+                  {isGeneratingAudio ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Volume2 className="h-4 w-4" />
+                  )}
+                  {isGeneratingAudio ? 'Generating...' : 'Generate Audio from Script'}
+                </Button>
+
+                <div className="relative">
+                  <Input
+                    type="file"
+                    accept="audio/*"
+                    className="hidden"
+                    id="audio-upload"
+                    onChange={handleAudioUpload}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById('audio-upload')?.click()}
+                    className="flex gap-2"
+                  >
+                    <FileAudio className="h-4 w-4" />
+                    Upload Your Audio
+                  </Button>
+                </div>
+              </div>
+
+              {previewAudio && (
+                <div className="mt-4 p-4 rounded-md bg-white/5">
+                  <p className="text-sm font-medium mb-2">Audio Preview</p>
+                  <audio controls className="w-full">
+                    <source src={previewAudio} />
+                    Your browser does not support the audio element.
+                  </audio>
+                </div>
+              )}
+
+              {isUploading && (
+                <div className="mt-2">
+                  <p className="text-sm mb-1">Uploading: {uploadProgress}%</p>
+                  <Progress value={uploadProgress} className="h-2" />
+                </div>
+              )}
+            </div>
           </div>
           
           <div className="flex justify-end">
