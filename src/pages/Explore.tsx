@@ -7,8 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { usePodcasts, Podcast } from '@/hooks/use-podcast-api';
 import PodcastCard from '@/components/ui/podcast-card';
+import PodcastCardSkeleton from '@/components/ui/podcast-card-skeleton';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { useToast } from '@/components/ui/use-toast';
+import { useAudioPlayer } from '@/context/AudioPlayerContext';
 
 const categories = ['All', 'Business', 'Health', 'Education', 'Art', 'Science', 'Finance', 'Technology', 'Entertainment'];
 const sortOptions = [
@@ -19,6 +21,7 @@ const sortOptions = [
 
 const Explore = () => {
   const { toast } = useToast();
+  const { playPodcast } = useAudioPlayer();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedSort, setSelectedSort] = useState<'newest' | 'popular' | 'duration'>('newest');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -44,10 +47,15 @@ const Explore = () => {
 
   // Handle podcast play
   const handlePlayPodcast = (podcast: Podcast) => {
-    // In a real app, this would start playing the podcast
-    toast({
-      title: "Playing Podcast",
-      description: `Now playing ${podcast.title}`,
+    playPodcast({
+      id: podcast.id,
+      title: podcast.title,
+      description: podcast.description,
+      thumbnailUrl: podcast.imageUrl,
+      creatorName: podcast.author,
+      duration: podcast.duration,
+      category: podcast.category,
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-' + (parseInt(podcast.id) % 16 + 1) + '.mp3'
     });
   };
 
@@ -60,6 +68,9 @@ const Explore = () => {
       }
     }
   };
+
+  // Generate skeleton array when loading
+  const skeletons = Array.from({ length: 6 }, (_, i) => <PodcastCardSkeleton key={i} />);
 
   return (
     <div className="space-y-8">
@@ -137,9 +148,14 @@ const Explore = () => {
       </motion.div>
       
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sidebar-primary"></div>
-        </div>
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          {skeletons}
+        </motion.div>
       ) : isError ? (
         <div className="py-20 text-center">
           <p className="text-lg font-semibold text-red-500">Error loading podcasts</p>

@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUser } from '@clerk/clerk-react';
 import PodcastCard from '@/components/ui/podcast-card';
+import { useAudioPlayer } from '@/context/AudioPlayerContext';
 
 const Profile = () => {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
+  const { playPodcast } = useAudioPlayer();
   
   // Mock user podcasts data
   const userPodcasts = [
@@ -20,6 +22,7 @@ const Profile = () => {
       creatorName: user?.fullName || 'User',
       duration: '25 min',
       category: 'Technology',
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
     },
     {
       id: 'user-2',
@@ -29,8 +32,17 @@ const Profile = () => {
       creatorName: user?.fullName || 'User',
       duration: '32 min',
       category: 'Education',
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
     },
   ];
+
+  if (!isLoaded) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sidebar-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -61,7 +73,7 @@ const Profile = () => {
             <div className="flex flex-wrap gap-4 mt-4 justify-center md:justify-start">
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
-                <span>Joined {new Date().toLocaleDateString()}</span>
+                <span>Joined {new Date(user?.createdAt || Date.now()).toLocaleDateString()}</span>
               </div>
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Mic className="h-4 w-4" />
@@ -89,7 +101,7 @@ const Profile = () => {
             <PodcastCard
               key={podcast.id}
               {...podcast}
-              onClick={() => {}}
+              onClick={() => playPodcast(podcast)}
             />
           ))}
         </div>

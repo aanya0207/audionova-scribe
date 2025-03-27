@@ -2,6 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import PodcastCard from '@/components/ui/podcast-card';
+import { useAudioPlayer } from '@/context/AudioPlayerContext';
 
 // Sample data
 const podcasts = [
@@ -12,7 +13,8 @@ const podcasts = [
     thumbnailUrl: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&q=80&w=400&h=225',
     creatorName: 'Tech Innovators',
     duration: '32 min',
-    category: 'Business'
+    category: 'Business',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
   },
   {
     id: '2',
@@ -21,7 +23,8 @@ const podcasts = [
     thumbnailUrl: 'https://images.unsplash.com/photo-1593697821028-7cc59cfd7399?auto=format&fit=crop&q=80&w=400&h=225',
     creatorName: 'Wellness Collective',
     duration: '45 min',
-    category: 'Health'
+    category: 'Health',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
   },
   {
     id: '3',
@@ -30,7 +33,8 @@ const podcasts = [
     thumbnailUrl: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=400&h=225',
     creatorName: 'EcoFriendly',
     duration: '28 min',
-    category: 'Education'
+    category: 'Education',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'
   },
   {
     id: '4',
@@ -39,7 +43,8 @@ const podcasts = [
     thumbnailUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=400&h=225',
     creatorName: 'Design Masters',
     duration: '37 min',
-    category: 'Art'
+    category: 'Art',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3'
   },
   {
     id: '5',
@@ -48,7 +53,8 @@ const podcasts = [
     thumbnailUrl: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&q=80&w=400&h=225',
     creatorName: 'Cosmic Ventures',
     duration: '52 min',
-    category: 'Science'
+    category: 'Science',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3'
   },
   {
     id: '6',
@@ -57,13 +63,16 @@ const podcasts = [
     thumbnailUrl: 'https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?auto=format&fit=crop&q=80&w=400&h=225',
     creatorName: 'Wealth Builders',
     duration: '41 min',
-    category: 'Finance'
+    category: 'Finance',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3'
   },
 ];
 
 const categories = ['All', 'Business', 'Health', 'Education', 'Art', 'Science', 'Finance', 'Technology', 'Entertainment'];
 
 const Home = () => {
+  const { playPodcast } = useAudioPlayer();
+  
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -121,6 +130,7 @@ const Home = () => {
           <PodcastCard
             key={podcast.id}
             {...podcast}
+            onClick={() => playPodcast(podcast)}
           />
         ))}
       </motion.div>

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Play, Clock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buttonHoverTap } from '@/lib/animations';
+import { useAudioPlayer } from '@/context/AudioPlayerContext';
 
 export interface PodcastCardProps {
   id: string;
@@ -13,6 +14,7 @@ export interface PodcastCardProps {
   creatorName: string;
   duration: string;
   category: string;
+  audioUrl?: string;
   className?: string;
   onClick?: () => void;
 }
@@ -25,9 +27,36 @@ const PodcastCard = ({
   creatorName,
   duration,
   category,
+  audioUrl,
   className,
   onClick,
 }: PodcastCardProps) => {
+  const { playPodcast, currentPodcast, isPlaying, pausePodcast, resumePodcast } = useAudioPlayer();
+
+  const isCurrentlyPlaying = currentPodcast?.id === id && isPlaying;
+
+  const handlePlayClick = () => {
+    if (isCurrentlyPlaying) {
+      pausePodcast();
+    } else if (currentPodcast?.id === id && !isPlaying) {
+      resumePodcast();
+    } else {
+      playPodcast({ 
+        id, 
+        title, 
+        description, 
+        thumbnailUrl, 
+        creatorName, 
+        duration, 
+        category,
+        audioUrl 
+      });
+    }
+    
+    // Call the original onClick handler if provided
+    if (onClick) onClick();
+  };
+
   return (
     <motion.div
       className={cn(
@@ -48,11 +77,14 @@ const PodcastCard = ({
         <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
         
         <motion.button
-          className="absolute bottom-4 right-4 w-12 h-12 rounded-full bg-sidebar-primary flex items-center justify-center text-white"
+          className={`absolute bottom-4 right-4 w-12 h-12 rounded-full ${isCurrentlyPlaying ? 'bg-green-500' : 'bg-sidebar-primary'} flex items-center justify-center text-white`}
           {...buttonHoverTap}
-          onClick={onClick}
+          onClick={handlePlayClick}
         >
-          <Play className="w-5 h-5 ml-0.5" fill="white" />
+          <Play className={`w-5 h-5 ${isCurrentlyPlaying ? 'opacity-0' : 'opacity-100 ml-0.5'}`} fill="white" />
+          <span className={`absolute ${isCurrentlyPlaying ? 'opacity-100' : 'opacity-0'}`}>
+            <span className="block w-2.5 h-2.5 bg-white rounded-sm"></span>
+          </span>
         </motion.button>
         
         <div className="absolute top-4 left-4 px-2 py-1 text-xs rounded-full glass-card text-white/90">

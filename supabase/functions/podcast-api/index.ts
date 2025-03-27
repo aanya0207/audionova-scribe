@@ -1,58 +1,108 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const TADDY_API_KEY = Deno.env.get("TADDY_API_KEY");
-const TADDY_API_BASE_URL = "https://api.taddy.org"; // Replace with actual Taddy API URL
-
-// CORS headers for browser requests
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Parse request body
-    const body = await req.json();
-    const { action, params, id } = body;
+    const { action, params, id } = await req.json();
     
-    console.log(`Processing ${action} request`, { params, id });
-
-    // Return mock data for now, until we implement the real API integration
-    let responseData;
+    // Mock data for quick response
+    const mockPodcasts = getMockPodcasts();
+    const cachedCategories = ['All', 'Business', 'Health', 'Education', 'Art', 'Science', 'Finance', 'Technology', 'Entertainment'];
     
-    if (action === "get-podcasts") {
-      responseData = getMockPodcasts(params);
-    } else if (action === "get-podcast-details") {
-      responseData = getMockPodcastDetails(id);
-    } else if (action === "get-podcast-episodes") {
-      responseData = getMockPodcastEpisodes(id);
-    } else {
-      throw new Error(`Unknown action: ${action}`);
+    // Route requests based on action
+    switch(action) {
+      case 'get-podcasts':
+        let filteredPodcasts = [...mockPodcasts];
+        
+        // Apply category filter
+        if (params?.category && params.category !== 'All') {
+          filteredPodcasts = filteredPodcasts.filter(p => p.category === params.category);
+        }
+        
+        // Apply search query
+        if (params?.search) {
+          const query = params.search.toLowerCase();
+          filteredPodcasts = filteredPodcasts.filter(p => 
+            p.title.toLowerCase().includes(query) || 
+            p.description.toLowerCase().includes(query) ||
+            p.author.toLowerCase().includes(query)
+          );
+        }
+        
+        // Apply sorting
+        if (params?.sort) {
+          switch(params.sort) {
+            case 'newest':
+              filteredPodcasts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+              break;
+            case 'popular':
+              // Sort by some popularity metric, like episodeCount or a random number for demo
+              filteredPodcasts.sort((a, b) => (b.episodeCount || 0) - (a.episodeCount || 0));
+              break;
+            case 'duration':
+              // Sort by duration (assuming duration is stored as 'XX min')
+              filteredPodcasts.sort((a, b) => {
+                const aDuration = parseInt(a.duration.replace(' min', '')) || 0;
+                const bDuration = parseInt(b.duration.replace(' min', '')) || 0;
+                return bDuration - aDuration;
+              });
+              break;
+          }
+        }
+        
+        return new Response(JSON.stringify(filteredPodcasts), { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      
+      case 'get-podcast-details':
+        const podcast = mockPodcasts.find(p => p.id === id);
+        if (!podcast) {
+          return new Response(JSON.stringify({ error: 'Podcast not found' }), { 
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          });
+        }
+        return new Response(JSON.stringify(podcast), { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      
+      case 'get-podcast-episodes':
+        const episodes = getMockPodcastEpisodes(id);
+        return new Response(JSON.stringify(episodes), { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      
+      case 'get-categories':
+        return new Response(JSON.stringify(cachedCategories), { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      
+      default:
+        return new Response(JSON.stringify({ error: 'Invalid action' }), { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
     }
-
-    return new Response(JSON.stringify(responseData), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
   } catch (error) {
-    console.error("Error in podcast-api function:", error.message);
-    
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
+    return new Response(JSON.stringify({ error: error.message }), { 
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
     });
   }
 });
 
-// Mock data functions for development
-function getMockPodcasts(params?: any): any[] {
-  const mockPodcasts = [
+function getMockPodcasts() {
+  return [
     {
       id: '1',
       title: 'The Future of AI in Business',
@@ -63,6 +113,7 @@ function getMockPodcasts(params?: any): any[] {
       category: 'Business',
       publishedAt: '2023-05-15',
       episodeCount: 12,
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
     },
     {
       id: '2',
@@ -74,6 +125,7 @@ function getMockPodcasts(params?: any): any[] {
       category: 'Health',
       publishedAt: '2023-06-22',
       episodeCount: 8,
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
     },
     {
       id: '3',
@@ -85,6 +137,7 @@ function getMockPodcasts(params?: any): any[] {
       category: 'Education',
       publishedAt: '2023-04-10',
       episodeCount: 15,
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'
     },
     {
       id: '4',
@@ -96,6 +149,7 @@ function getMockPodcasts(params?: any): any[] {
       category: 'Art',
       publishedAt: '2023-07-05',
       episodeCount: 6,
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3'
     },
     {
       id: '5',
@@ -107,6 +161,7 @@ function getMockPodcasts(params?: any): any[] {
       category: 'Science',
       publishedAt: '2023-03-18',
       episodeCount: 9,
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3'
     },
     {
       id: '6',
@@ -118,99 +173,91 @@ function getMockPodcasts(params?: any): any[] {
       category: 'Finance',
       publishedAt: '2023-08-30',
       episodeCount: 11,
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3'
     },
     {
       id: '7',
-      title: 'Technology Trends for 2023',
-      description: 'A deep dive into upcoming tech innovations that will shape our future.',
-      imageUrl: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&q=80&w=400&h=225',
-      author: 'Future Tech Now',
-      duration: '39 min',
-      category: 'Technology',
-      publishedAt: '2023-01-05',
+      title: 'The History of Rock Music',
+      description: 'A journey through the evolution of rock music from the 1950s to today.',
+      imageUrl: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&q=80&w=400&h=225',
+      author: 'Music Historians',
+      duration: '48 min',
+      category: 'Entertainment',
+      publishedAt: '2023-09-15',
       episodeCount: 7,
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3'
     },
     {
       id: '8',
-      title: 'The Art of Storytelling',
-      description: 'How master storytellers captivate audiences and create memorable narratives.',
-      imageUrl: 'https://images.unsplash.com/photo-1528458909336-e7a0adfed0a5?auto=format&fit=crop&q=80&w=400&h=225',
-      author: 'Creative Minds',
+      title: 'Quantum Computing Explained',
+      description: 'Breaking down the complex science of quantum computing for the average person.',
+      imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&q=80&w=400&h=225',
+      author: 'Science Simplified',
       duration: '33 min',
-      category: 'Entertainment',
-      publishedAt: '2023-02-12',
-      episodeCount: 14,
+      category: 'Technology',
+      publishedAt: '2023-02-28',
+      episodeCount: 5,
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3'
     },
     {
       id: '9',
-      title: 'Nutrition Myths Debunked',
-      description: 'Separating fact from fiction in the world of nutrition and diet advice.',
-      imageUrl: 'https://images.unsplash.com/photo-1490818387583-1baba5e638af?auto=format&fit=crop&q=80&w=400&h=225',
-      author: 'Health Science',
-      duration: '46 min',
-      category: 'Health',
-      publishedAt: '2023-05-25',
-      episodeCount: 10,
+      title: 'Cooking Without Borders',
+      description: 'Exploring global cuisines and fusion cooking techniques from professional chefs.',
+      imageUrl: 'https://images.unsplash.com/photo-1514986888952-8cd320577b68?auto=format&fit=crop&q=80&w=400&h=225',
+      author: 'Global Gastronomy',
+      duration: '39 min',
+      category: 'Education',
+      publishedAt: '2023-10-05',
+      episodeCount: 14,
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3'
     },
-  ];
-
-  // Filter by category if provided
-  let filteredPodcasts = [...mockPodcasts];
-  if (params?.category && params.category !== 'All') {
-    filteredPodcasts = filteredPodcasts.filter(p => p.category === params.category);
-  }
-
-  // Apply search if provided
-  if (params?.search) {
-    const searchLower = params.search.toLowerCase();
-    filteredPodcasts = filteredPodcasts.filter(p => 
-      p.title.toLowerCase().includes(searchLower) || 
-      p.description.toLowerCase().includes(searchLower) ||
-      p.author.toLowerCase().includes(searchLower)
-    );
-  }
-
-  // Apply sorting
-  if (params?.sort) {
-    switch (params.sort) {
-      case 'newest':
-        filteredPodcasts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-        break;
-      case 'popular':
-        filteredPodcasts.sort((a, b) => (b.episodeCount || 0) - (a.episodeCount || 0));
-        break;
-      case 'duration':
-        filteredPodcasts.sort((a, b) => parseInt(a.duration) - parseInt(b.duration));
-        break;
+    {
+      id: '10',
+      title: 'The Psychology of Success',
+      description: 'Understanding the mindset and habits that lead to personal and professional success.',
+      imageUrl: 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=400&h=225',
+      author: 'Mind Matters',
+      duration: '47 min',
+      category: 'Business',
+      publishedAt: '2023-01-22',
+      episodeCount: 18,
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3'
+    },
+    {
+      id: '11',
+      title: 'Urban Gardening Solutions',
+      description: 'How to create thriving gardens in small urban spaces with limited resources.',
+      imageUrl: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=400&h=225',
+      author: 'City Growers',
+      duration: '31 min',
+      category: 'Health',
+      publishedAt: '2023-04-18',
+      episodeCount: 9,
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3'
+    },
+    {
+      id: '12',
+      title: 'Digital Privacy in 2023',
+      description: 'Essential strategies to protect your personal data in an increasingly connected world.',
+      imageUrl: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&q=80&w=400&h=225',
+      author: 'Security Experts',
+      duration: '36 min',
+      category: 'Technology',
+      publishedAt: '2023-03-30',
+      episodeCount: 11,
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3'
     }
-  }
-
-  return filteredPodcasts;
+  ];
 }
 
-function getMockPodcastDetails(id: string): any {
-  const podcasts = getMockPodcasts();
-  const podcast = podcasts.find(p => p.id === id);
-  
-  if (!podcast) {
-    throw new Error(`Podcast with ID ${id} not found`);
-  }
-  
-  return {
-    ...podcast,
-    description: podcast.description + ' ' + podcast.description + ' ' + podcast.description, // Make it longer for the details page
-  };
-}
-
-function getMockPodcastEpisodes(podcastId: string): any[] {
-  // Create 5 mock episodes for any podcast ID
+function getMockPodcastEpisodes(podcastId: string) {
   return Array.from({ length: 5 }, (_, i) => ({
     id: `${podcastId}-ep-${i+1}`,
     title: `Episode ${i+1}: The Journey Continues`,
     description: `This is episode ${i+1} of the podcast series. Join us as we explore more fascinating topics and insights.`,
-    audioUrl: 'https://example.com/audio.mp3',
+    audioUrl: `https://www.soundhelix.com/examples/mp3/SoundHelix-Song-${(i % 16) + 1}.mp3`,
     duration: `${Math.floor(20 + Math.random() * 40)} min`,
-    publishedAt: new Date(Date.now() - i * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Dates going back weekly
+    publishedAt: new Date(Date.now() - i * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     podcastId,
   }));
 }
