@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@clerk/clerk-react';
+import { useNavigate } from 'react-router-dom';
 
 const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters").max(100, "Title must be less than 100 characters"),
@@ -23,6 +24,7 @@ const formSchema = z.object({
   category: z.string().min(1, "Category is required"),
   voiceType: z.enum(["male", "female", "robotic"]),
   thumbnailUrl: z.string().url("Please provide a valid URL or generate a thumbnail"),
+  audioUrl: z.string().optional(),
 });
 
 const categories = [
@@ -31,9 +33,38 @@ const categories = [
   'History', 'Travel', 'Food', 'Fashion', 'Music', 'Movies'
 ];
 
+// A selection of real podcast episodes for different categories
+const realPodcastEpisodes = {
+  'Business': [
+    'https://media.transistor.fm/f1dc2614/d65e1158.mp3',
+    'https://traffic.libsyn.com/secure/whywebuypodcast/3_Types_of_Shoppers_You_Need_to_Please_to_Get_Higher_Prices.mp3'
+  ],
+  'Health': [
+    'https://traffic.megaphone.fm/FGTL9473258835.mp3',
+    'https://traffic.megaphone.fm/ADV7407557174.mp3'
+  ],
+  'Education': [
+    'https://www.bbc.co.uk/learningenglish/audio/6min/6min-2023-08-10.mp3',
+    'https://traffic.libsyn.com/secure/revolutionspodcast/10.12-_The_Southern_Soviets.mp3'
+  ],
+  'Technology': [
+    'https://chrt.fm/track/G8F1AF/cdn.simplecast.com/audio/6fa1d34c-502b-4abf-bd82-483804006e0b/episodes/1f5f83f8-2a4d-46c8-8a48-8f57acdf8670/audio/0bd7dac2-29fb-46ab-9c3b-76b663139913/default_tc.mp3',
+    'https://aphid.fireside.fm/d/1437767933/b6676b3f-1d8d-4bef-84c8-1dac7c3b4bfa/b10b6743-9aa6-44c3-8835-1aea5a9282a3.mp3'
+  ],
+  'Entertainment': [
+    'https://traffic.megaphone.fm/GLT8204277320.mp3',
+    'https://traffic.megaphone.fm/CAD8749614813.mp3'
+  ],
+  'Default': [
+    'https://traffic.libsyn.com/secure/revolutionspodcast/10.12-_The_Southern_Soviets.mp3',
+    'https://aphid.fireside.fm/d/1437767933/b6676b3f-1d8d-4bef-84c8-1dac7c3b4bfa/b10b6743-9aa6-44c3-8835-1aea5a9282a3.mp3'
+  ]
+};
+
 const CreatePodcast = () => {
   const { toast } = useToast();
   const { user } = useUser();
+  const navigate = useNavigate();
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,6 +80,7 @@ const CreatePodcast = () => {
       category: "",
       voiceType: "male",
       thumbnailUrl: "",
+      audioUrl: "",
     },
   });
   
@@ -91,6 +123,11 @@ const CreatePodcast = () => {
           form.setValue("description", plainText.substring(0, 150) + '...');
         }
         
+        // Assign a real podcast audio URL based on the category
+        let podcastUrls = realPodcastEpisodes[category] || realPodcastEpisodes.Default;
+        const randomIndex = Math.floor(Math.random() * podcastUrls.length);
+        form.setValue("audioUrl", podcastUrls[randomIndex]);
+        
         toast({
           title: "Script Generated",
           description: "AI script generated successfully"
@@ -108,13 +145,32 @@ const CreatePodcast = () => {
     }
   };
   
-  // Generate thumbnail with AI
+  // Generate thumbnail with AI focused on script content
   const handleGenerateThumbnail = async () => {
     const currentPrompt = form.getValues("prompt");
     const currentTitle = form.getValues("title");
     const currentCategory = form.getValues("category");
+    const currentScript = form.getValues("script");
     
-    if (!currentPrompt && !currentTitle && !currentCategory) {
+    // Build a more specific prompt based on script content or category
+    let thumbnailPrompt = currentPrompt;
+    
+    if (currentScript) {
+      // Extract key concepts from script for a more targeted thumbnail
+      const keyPhrases = currentScript
+        .split('.')
+        .slice(0, 3)
+        .join(' ')
+        .replace(/\n/g, ' ');
+        
+      thumbnailPrompt = `Create a visual for a podcast about: ${keyPhrases}`;
+    } else if (currentTitle) {
+      thumbnailPrompt = `Podcast artwork for: ${currentTitle}`;
+    } else if (currentCategory) {
+      thumbnailPrompt = `Professional podcast thumbnail for ${currentCategory} podcast`;
+    }
+    
+    if (!thumbnailPrompt) {
       toast({
         title: "Information Required",
         description: "Please enter a title, prompt, or select a category",
@@ -129,7 +185,7 @@ const CreatePodcast = () => {
       const { data, error } = await supabase.functions.invoke('ai-generation', {
         body: {
           action: 'generate-thumbnail',
-          prompt: currentPrompt,
+          prompt: thumbnailPrompt,
           title: currentTitle,
           category: currentCategory
         }
@@ -156,26 +212,52 @@ const CreatePodcast = () => {
     }
   };
   
-  // Form submission
+  // Form submission - now saves to user's profile
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     
     try {
-      // In a real app, this would create a podcast in the database
-      console.log("Submitting podcast:", values);
+      if (!user) {
+        throw new Error("You must be logged in to publish a podcast");
+      }
       
-      // Mock successful submission
-      setTimeout(() => {
-        toast({
-          title: "Podcast Created",
-          description: "Your podcast has been published successfully!"
-        });
-        
-        // Reset form
-        form.reset();
-        
-        setIsSubmitting(false);
-      }, 1500);
+      // If audioUrl is not set, assign a default one based on category
+      if (!values.audioUrl) {
+        const podcastUrls = realPodcastEpisodes[values.category] || realPodcastEpisodes.Default;
+        const randomIndex = Math.floor(Math.random() * podcastUrls.length);
+        values.audioUrl = podcastUrls[randomIndex];
+      }
+      
+      // Create a new podcast object
+      const newPodcast = {
+        id: crypto.randomUUID(),
+        title: values.title,
+        description: values.description,
+        thumbnailUrl: values.thumbnailUrl,
+        creatorName: user.fullName || 'Anonymous Creator',
+        duration: Math.floor(15 + Math.random() * 35) + ' min', // Random duration between 15-50 min
+        category: values.category,
+        audioUrl: values.audioUrl,
+        createdAt: new Date().toISOString(),
+        userId: user.id
+      };
+
+      // In a real app, this would store the podcast in Supabase or another backend
+      // For now, we'll store it in localStorage for demo purposes
+      const existingPodcasts = JSON.parse(localStorage.getItem('userPodcasts') || '[]');
+      existingPodcasts.push(newPodcast);
+      localStorage.setItem('userPodcasts', JSON.stringify(existingPodcasts));
+      
+      toast({
+        title: "Podcast Published",
+        description: "Your podcast has been published successfully!"
+      });
+      
+      // Reset form
+      form.reset();
+      
+      // Navigate to profile page to see the new podcast
+      navigate('/profile');
     } catch (error) {
       console.error("Form submission error:", error);
       toast({
@@ -183,6 +265,7 @@ const CreatePodcast = () => {
         description: error instanceof Error ? error.message : "Failed to create podcast",
         variant: "destructive"
       });
+    } finally {
       setIsSubmitting(false);
     }
   };

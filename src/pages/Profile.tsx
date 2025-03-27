@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, Edit, Calendar, Clock, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,33 +8,50 @@ import { useUser } from '@clerk/clerk-react';
 import PodcastCard from '@/components/ui/podcast-card';
 import { useAudioPlayer } from '@/context/AudioPlayerContext';
 
+interface UserPodcast {
+  id: string;
+  title: string;
+  description: string;
+  thumbnailUrl: string;
+  creatorName: string;
+  duration: string;
+  category: string;
+  audioUrl: string;
+  createdAt?: string;
+  userId?: string;
+}
+
 const Profile = () => {
   const { user, isLoaded } = useUser();
   const { playPodcast } = useAudioPlayer();
+  const [userPodcasts, setUserPodcasts] = useState<UserPodcast[]>([]);
+  const [totalDuration, setTotalDuration] = useState<string>("0 min");
   
-  // Mock user podcasts data
-  const userPodcasts = [
-    {
-      id: 'user-1',
-      title: 'My First Podcast',
-      description: 'This is my first podcast about technology and innovation.',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&q=80&w=400&h=225',
-      creatorName: user?.fullName || 'User',
-      duration: '25 min',
-      category: 'Technology',
-      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
-    },
-    {
-      id: 'user-2',
-      title: 'Creative Thinking',
-      description: 'Exploring methods to enhance creativity and problem-solving.',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&q=80&w=400&h=225',
-      creatorName: user?.fullName || 'User',
-      duration: '32 min',
-      category: 'Education',
-      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
-    },
-  ];
+  useEffect(() => {
+    // Load user podcasts from localStorage
+    if (isLoaded && user) {
+      // Get stored podcasts
+      const storedPodcasts = JSON.parse(localStorage.getItem('userPodcasts') || '[]');
+      
+      // Filter podcasts for the current user
+      const currentUserPodcasts = storedPodcasts.filter(
+        (podcast: UserPodcast) => podcast.userId === user.id
+      );
+      
+      setUserPodcasts(currentUserPodcasts);
+      
+      // Calculate total duration
+      if (currentUserPodcasts.length > 0) {
+        const totalMinutes = currentUserPodcasts.reduce((total: number, podcast: UserPodcast) => {
+          const durationMatch = podcast.duration.match(/(\d+)/);
+          const minutes = durationMatch ? parseInt(durationMatch[0]) : 0;
+          return total + minutes;
+        }, 0);
+        
+        setTotalDuration(`${totalMinutes} min`);
+      }
+    }
+  }, [isLoaded, user]);
 
   if (!isLoaded) {
     return (
@@ -81,7 +98,7 @@ const Profile = () => {
               </div>
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
-                <span>57 min Total Duration</span>
+                <span>{totalDuration} Total Duration</span>
               </div>
             </div>
           </div>
@@ -96,15 +113,28 @@ const Profile = () => {
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">My Podcasts</h2>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {userPodcasts.map((podcast) => (
-            <PodcastCard
-              key={podcast.id}
-              {...podcast}
-              onClick={() => playPodcast(podcast)}
-            />
-          ))}
-        </div>
+        {userPodcasts.length === 0 ? (
+          <div className="glass-card p-8 text-center">
+            <Mic className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">No podcasts yet</h3>
+            <p className="text-muted-foreground mb-4">
+              You haven't created any podcasts yet. Start creating your first podcast now!
+            </p>
+            <Button variant="default" onClick={() => window.location.href = '/create'}>
+              Create Your First Podcast
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {userPodcasts.map((podcast) => (
+              <PodcastCard
+                key={podcast.id}
+                {...podcast}
+                onClick={() => playPodcast(podcast)}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
