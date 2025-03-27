@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mic, Sparkles, Upload, Image, RefreshCw, Volume2, FileAudio } from 'lucide-react';
@@ -25,6 +24,7 @@ const formSchema = z.object({
   category: z.string().min(1, "Category is required"),
   voiceType: z.enum(["male", "female", "robotic"]),
   thumbnailUrl: z.string().url("Please provide a valid URL or generate a thumbnail"),
+  thumbnailPrompt: z.string().optional(),
   audioUrl: z.string().optional(),
 });
 
@@ -34,7 +34,6 @@ const categories = [
   'History', 'Travel', 'Food', 'Fashion', 'Music', 'Movies'
 ];
 
-// A selection of real podcast episodes for different categories
 const realPodcastEpisodes = {
   'Business': [
     'https://media.transistor.fm/f1dc2614/d65e1158.mp3',
@@ -75,7 +74,6 @@ const CreatePodcast = () => {
   const [previewAudio, setPreviewAudio] = useState<string | null>(null);
   const [uploadedAudioFile, setUploadedAudioFile] = useState<File | null>(null);
   
-  // Form definition
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -86,18 +84,18 @@ const CreatePodcast = () => {
       category: "",
       voiceType: "male",
       thumbnailUrl: "",
+      thumbnailPrompt: "",
       audioUrl: "",
     },
   });
   
-  // Watch form values for AI generation
   const title = form.watch("title");
   const prompt = form.watch("prompt");
   const script = form.watch("script");
   const category = form.watch("category");
   const voiceType = form.watch("voiceType");
+  const thumbnailPrompt = form.watch("thumbnailPrompt");
   
-  // Generate script with AI
   const handleGenerateScript = async () => {
     if (!prompt) {
       toast({
@@ -125,7 +123,6 @@ const CreatePodcast = () => {
       if (data && data.script) {
         form.setValue("script", data.script);
         
-        // If description is empty, use the first 150 characters of the script as description
         if (!form.getValues("description")) {
           const plainText = data.script.replace(/#+\s+.*\n/g, '').replace(/\n/g, ' ').trim();
           form.setValue("description", plainText.substring(0, 150) + '...');
@@ -148,18 +145,49 @@ const CreatePodcast = () => {
     }
   };
   
-  // Generate thumbnail with AI focused on script content
   const handleGenerateThumbnail = async () => {
     const currentPrompt = form.getValues("prompt");
     const currentTitle = form.getValues("title");
     const currentCategory = form.getValues("category");
     const currentScript = form.getValues("script");
+    const currentThumbnailPrompt = form.getValues("thumbnailPrompt");
     
-    // Build a more specific prompt based on script content or category
+    if (currentThumbnailPrompt && currentThumbnailPrompt.trim().length > 0) {
+      setIsGeneratingThumbnail(true);
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('ai-generation', {
+          body: {
+            action: 'generate-thumbnail',
+            thumbnailPrompt: currentThumbnailPrompt,
+          }
+        });
+        
+        if (error) throw new Error(error.message);
+        
+        if (data && data.imageUrl) {
+          form.setValue("thumbnailUrl", data.imageUrl);
+          toast({
+            title: "Thumbnail Generated",
+            description: "Custom thumbnail generated successfully"
+          });
+        }
+      } catch (error) {
+        console.error("Thumbnail generation error:", error);
+        toast({
+          title: "Generation Failed",
+          description: error instanceof Error ? error.message : "Failed to generate thumbnail",
+          variant: "destructive"
+        });
+      } finally {
+        setIsGeneratingThumbnail(false);
+      }
+      return;
+    }
+    
     let thumbnailPrompt = currentPrompt;
     
     if (currentScript) {
-      // Extract key concepts from script for a more targeted thumbnail
       const keyPhrases = currentScript
         .split('.')
         .slice(0, 3)
@@ -215,7 +243,6 @@ const CreatePodcast = () => {
     }
   };
 
-  // Generate audio from script using text-to-speech
   const handleGenerateAudio = async () => {
     const currentScript = form.getValues("script");
     const currentVoiceType = form.getValues("voiceType");
@@ -229,14 +256,17 @@ const CreatePodcast = () => {
       return;
     }
     
-    // Get a shorter version of the script for audio generation
-    // ElevenLabs has character limits, so we'll use just the first part
     const shortScript = currentScript.substring(0, 4000);
     
     setIsGeneratingAudio(true);
     setPreviewAudio(null);
     
     try {
+      console.log("Calling text-to-speech function with:", {
+        text: shortScript.length,
+        voiceType: currentVoiceType
+      });
+      
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
           text: shortScript,
@@ -244,7 +274,12 @@ const CreatePodcast = () => {
         }
       });
       
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error("Error response from function:", error);
+        throw new Error(error.message);
+      }
+      
+      console.log("Text-to-speech response:", data);
       
       if (data && data.audioUrl) {
         form.setValue("audioUrl", data.audioUrl);
@@ -254,6 +289,10 @@ const CreatePodcast = () => {
           title: "Audio Generated",
           description: "Text-to-speech conversion successful"
         });
+      } else if (data && data.error) {
+        throw new Error(data.error);
+      } else {
+        throw new Error("No audio URL returned from API");
       }
     } catch (error) {
       console.error("Audio generation error:", error);
@@ -267,12 +306,10 @@ const CreatePodcast = () => {
     }
   };
 
-  // Handle audio file upload
   const handleAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     
-    // Check if the file is an audio file
     if (!file.type.startsWith('audio/')) {
       toast({
         title: "Invalid File",
@@ -284,19 +321,15 @@ const CreatePodcast = () => {
     
     setUploadedAudioFile(file);
     
-    // Create a URL for the audio file for preview
     const audioUrl = URL.createObjectURL(file);
     setPreviewAudio(audioUrl);
     
-    // Since we're now using the uploaded file, we need to handle this in form submission
-    // We don't set the audioUrl in the form yet, as we need to upload it properly during submission
     toast({
       title: "Audio Uploaded",
       description: "Your audio file is ready to be used"
     });
   };
 
-  // Form submission - now saves to user's profile
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     setUploadProgress(0);
@@ -308,45 +341,32 @@ const CreatePodcast = () => {
       
       let finalAudioUrl = values.audioUrl;
       
-      // If we have an uploaded file, we need to handle it
-      // In a real app, this would upload to a storage service
-      // For demo purposes, we're using the ObjectURL or simulating the upload
       if (uploadedAudioFile) {
-        // Simulate a file upload with progress
         for (let i = 0; i <= 100; i += 10) {
           setUploadProgress(i);
-          // Simulate network delay
           await new Promise(resolve => setTimeout(resolve, 200));
         }
         
-        // In a real app, we would upload the file here and get a URL
-        // For the demo, we'll just use the ObjectURL
         finalAudioUrl = URL.createObjectURL(uploadedAudioFile);
-      } 
-      // If no audio is provided (neither generated nor uploaded)
-      else if (!finalAudioUrl) {
-        // Assign a default one based on category
+      } else if (!finalAudioUrl) {
         const podcastUrls = realPodcastEpisodes[values.category] || realPodcastEpisodes.Default;
         const randomIndex = Math.floor(Math.random() * podcastUrls.length);
         finalAudioUrl = podcastUrls[randomIndex];
       }
       
-      // Create a new podcast object
       const newPodcast = {
         id: crypto.randomUUID(),
         title: values.title,
         description: values.description,
         thumbnailUrl: values.thumbnailUrl,
         creatorName: user.fullName || 'Anonymous Creator',
-        duration: Math.floor(15 + Math.random() * 35) + ' min', // Random duration between 15-50 min
+        duration: Math.floor(15 + Math.random() * 35) + ' min',
         category: values.category,
         audioUrl: finalAudioUrl,
         createdAt: new Date().toISOString(),
         userId: user.id
       };
 
-      // In a real app, this would store the podcast in Supabase or another backend
-      // For now, we'll store it in localStorage for demo purposes
       const existingPodcasts = JSON.parse(localStorage.getItem('userPodcasts') || '[]');
       existingPodcasts.push(newPodcast);
       localStorage.setItem('userPodcasts', JSON.stringify(existingPodcasts));
@@ -356,12 +376,10 @@ const CreatePodcast = () => {
         description: "Your podcast has been published successfully!"
       });
       
-      // Reset form
       form.reset();
       setPreviewAudio(null);
       setUploadedAudioFile(null);
       
-      // Navigate to profile page to see the new podcast
       navigate('/profile');
     } catch (error) {
       console.error("Form submission error:", error);
@@ -466,55 +484,78 @@ const CreatePodcast = () => {
                 )}
               />
               
-              <FormField
-                control={form.control}
-                name="thumbnailUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="flex justify-between items-center">
-                      <FormLabel>Thumbnail</FormLabel>
-                      <Button 
-                        type="button"
-                        variant="outline" 
-                        size="sm"
-                        onClick={handleGenerateThumbnail}
-                        disabled={isGeneratingThumbnail}
-                        className="flex gap-1 h-8"
-                      >
-                        {isGeneratingThumbnail ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Image className="h-3 w-3" />}
-                        {isGeneratingThumbnail ? 'Generating...' : 'Generate Image'}
-                      </Button>
-                    </div>
-                    {field.value ? (
-                      <div className="relative aspect-video rounded-md overflow-hidden border border-input">
-                        <img 
-                          src={field.value} 
-                          alt="Podcast thumbnail" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ) : (
+              <div className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="thumbnailPrompt"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Thumbnail Prompt</FormLabel>
                       <FormControl>
-                        <div className="border border-dashed border-muted-foreground/20 rounded-lg p-4 text-center aspect-video flex flex-col items-center justify-center">
-                          <Image className="h-8 w-8 text-muted-foreground mb-2" />
-                          <p className="text-sm text-muted-foreground">
-                            Generate a thumbnail or enter image URL
-                          </p>
-                        </div>
+                        <Textarea 
+                          placeholder="Describe what you want your thumbnail to look like"
+                          className="h-24 resize-none" 
+                          {...field} 
+                        />
                       </FormControl>
-                    )}
-                    <FormControl>
-                      <Input
-                        placeholder="Or enter image URL manually" 
-                        {...field}
-                        className="mt-2"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormDescription>
+                        Optional: Provide a specific prompt for the AI to generate your thumbnail
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
+            
+            <FormField
+              control={form.control}
+              name="thumbnailUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex justify-between items-center">
+                    <FormLabel>Thumbnail</FormLabel>
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleGenerateThumbnail}
+                      disabled={isGeneratingThumbnail}
+                      className="flex gap-1 h-8"
+                    >
+                      {isGeneratingThumbnail ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Image className="h-3 w-3" />}
+                      {isGeneratingThumbnail ? 'Generating...' : 'Generate Image'}
+                    </Button>
+                  </div>
+                  {field.value ? (
+                    <div className="relative aspect-video rounded-md overflow-hidden border border-input">
+                      <img 
+                        src={field.value} 
+                        alt="Podcast thumbnail" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <FormControl>
+                      <div className="border border-dashed border-muted-foreground/20 rounded-lg p-4 text-center aspect-video flex flex-col items-center justify-center">
+                        <Image className="h-8 w-8 text-muted-foreground mb-2" />
+                        <p className="text-sm text-muted-foreground">
+                          Generate a thumbnail or enter image URL
+                        </p>
+                      </div>
+                    </FormControl>
+                  )}
+                  <FormControl>
+                    <Input
+                      placeholder="Or enter image URL manually" 
+                      {...field}
+                      className="mt-2"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
             <FormField
               control={form.control}

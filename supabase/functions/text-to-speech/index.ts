@@ -46,6 +46,10 @@ serve(async (req) => {
 
     console.log(`Generating speech for voice ${selectedVoiceId}, text length: ${text.length} characters`);
 
+    // Make sure we're not sending too much text - ElevenLabs has limits
+    // Typically around 5000 characters is safe
+    const trimmedText = text.substring(0, 4000);
+    
     // Call ElevenLabs API to generate audio
     const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selectedVoiceId}`, {
       method: 'POST',
@@ -55,7 +59,7 @@ serve(async (req) => {
         'xi-api-key': elevenLabsApiKey,
       },
       body: JSON.stringify({
-        text: text,
+        text: trimmedText,
         model_id: 'eleven_monolingual_v1',
         voice_settings: {
           stability: 0.5,

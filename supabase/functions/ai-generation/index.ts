@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -15,7 +14,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, prompt, title, category } = body;
+    const { action, prompt, title, category, thumbnailPrompt } = body;
     
     switch (action) {
       case 'generate-script': {
@@ -31,12 +30,12 @@ serve(async (req) => {
       }
       
       case 'generate-thumbnail': {
-        // Generate thumbnail based on enhanced prompt
-        const enhancedPrompt = enhanceThumbnailPrompt(prompt, title, category);
-        console.log(`Generating thumbnail with enhanced prompt: ${enhancedPrompt}`);
+        // Use custom thumbnail prompt if provided, otherwise enhance based on other parameters
+        const finalPrompt = thumbnailPrompt || enhanceThumbnailPrompt(prompt, title, category);
+        console.log(`Generating thumbnail with prompt: ${finalPrompt}`);
         
         // Get a relevant image URL with better context awareness
-        const imageUrl = await getContextualUnsplashImage(enhancedPrompt);
+        const imageUrl = await getContextualUnsplashImage(finalPrompt);
         
         return new Response(JSON.stringify({ imageUrl }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -197,7 +196,7 @@ async function getContextualUnsplashImage(query: string) {
       'https://images.unsplash.com/photo-1505935428862-770b6f24f629',
       'https://images.unsplash.com/photo-1494859802809-d069c3b71a8a',
       'https://images.unsplash.com/photo-1512621776951-a57141f2eefd',
-      'https://images.unsplash.com/photo-1517244683847-7456b63c5969',
+      'https://images.unsplash.com/photo-1517244687492-7456b63c5969',
     ],
     'music': [
       'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4',
