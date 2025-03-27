@@ -38,13 +38,13 @@ export const usePodcasts = (filters: PodcastFilters = {}) => {
     queryKey,
     queryFn: async () => {
       // Build query string from filters
-      const params = new URLSearchParams();
-      if (filters.category) params.append('category', filters.category);
-      if (filters.sort) params.append('sort', filters.sort);
-      if (filters.search) params.append('search', filters.search);
+      const params: Record<string, string> = {};
+      if (filters.category) params.category = filters.category;
+      if (filters.sort) params.sort = filters.sort;
+      if (filters.search) params.search = filters.search;
       
-      const { data, error } = await supabase.functions.invoke('podcast-api/get-podcasts', {
-        query: params,
+      const { data, error } = await supabase.functions.invoke('podcast-api', {
+        body: { action: 'get-podcasts', params }
       });
       
       if (error) throw new Error(error.message);
@@ -67,8 +67,8 @@ export const usePodcastDetails = (podcastId: string | undefined) => {
     queryFn: async () => {
       if (!podcastId) throw new Error('Podcast ID is required');
       
-      const { data, error } = await supabase.functions.invoke('podcast-api/get-podcast-details', {
-        query: { id: podcastId },
+      const { data, error } = await supabase.functions.invoke('podcast-api', {
+        body: { action: 'get-podcast-details', id: podcastId }
       });
       
       if (error) throw new Error(error.message);
@@ -92,8 +92,8 @@ export const usePodcastEpisodes = (podcastId: string | undefined) => {
     queryFn: async () => {
       if (!podcastId) throw new Error('Podcast ID is required');
       
-      const { data, error } = await supabase.functions.invoke('podcast-api/get-podcast-episodes', {
-        query: { id: podcastId },
+      const { data, error } = await supabase.functions.invoke('podcast-api', {
+        body: { action: 'get-podcast-episodes', id: podcastId }
       });
       
       if (error) throw new Error(error.message);

@@ -14,6 +14,7 @@ export interface PodcastCardProps {
   duration: string;
   category: string;
   className?: string;
+  onClick?: () => void;
 }
 
 const PodcastCard = ({
@@ -25,6 +26,7 @@ const PodcastCard = ({
   duration,
   category,
   className,
+  onClick,
 }: PodcastCardProps) => {
   return (
     <motion.div
@@ -48,6 +50,7 @@ const PodcastCard = ({
         <motion.button
           className="absolute bottom-4 right-4 w-12 h-12 rounded-full bg-sidebar-primary flex items-center justify-center text-white"
           {...buttonHoverTap}
+          onClick={onClick}
         >
           <Play className="w-5 h-5 ml-0.5" fill="white" />
         </motion.button>
