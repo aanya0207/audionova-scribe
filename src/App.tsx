@@ -11,9 +11,6 @@ import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import MainLayout from "./components/Layout/MainLayout";
 
-// Install framer-motion package for animations
-<lov-add-dependency>framer-motion@10.15.0</lov-add-dependency>
-
 const queryClient = new QueryClient();
 
 const App = () => (
