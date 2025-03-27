@@ -81,17 +81,17 @@ const Explore = () => {
     currentPage * podcastsPerPage
   );
 
-  // Handle podcast play
-  const handlePlayPodcast = (podcast: Podcast) => {
+  // Handle podcast play - Fixed type errors here
+  const handlePlayPodcast = (podcast: Podcast | any) => {
     playPodcast({
       id: podcast.id,
       title: podcast.title,
       description: podcast.description,
-      thumbnailUrl: podcast.imageUrl || podcast.thumbnailUrl,
-      creatorName: podcast.author || podcast.creatorName,
+      thumbnailUrl: podcast.imageUrl || podcast.thumbnailUrl || '',
+      creatorName: podcast.author || podcast.creatorName || 'Unknown',
       duration: podcast.duration,
       category: podcast.category,
-      audioUrl: podcast.audioUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-' + (parseInt(podcast.id) % 16 + 1) + '.mp3'
+      audioUrl: podcast.audioUrl || `https://www.soundhelix.com/examples/mp3/SoundHelix-Song-${(parseInt(podcast.id) % 16 + 1)}.mp3`
     });
   };
 

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { HelpCircle, ChevronDown, Mail, MessageCircle, AlarmClock, Send } from 'lucide-react';
@@ -9,6 +8,13 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 
 const Help = () => {
   const { toast } = useToast();
@@ -19,9 +25,13 @@ const Help = () => {
     type: 'suggestion'
   });
   
-  const handleFeedbackChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleFeedbackChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFeedbackForm(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleFeedbackTypeChange = (value: string) => {
+    setFeedbackForm(prev => ({ ...prev, type: value }));
   };
   
   const handleSubmitFeedback = (e: React.FormEvent) => {
@@ -334,23 +344,26 @@ const Help = () => {
               </div>
               
               <div className="space-y-2">
-                <label htmlFor="type" className="block text-sm font-medium">
+                <label htmlFor="feedback-type" className="block text-sm font-medium">
                   Feedback Type
                 </label>
-                <select
-                  id="type"
-                  name="type"
-                  value={feedbackForm.type}
-                  onChange={handleFeedbackChange}
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-sidebar-primary"
-                  required
+                <Select 
+                  value={feedbackForm.type} 
+                  onValueChange={handleFeedbackTypeChange}
                 >
-                  <option value="suggestion">Suggestion</option>
-                  <option value="bug">Bug Report</option>
-                  <option value="feature">Feature Request</option>
-                  <option value="praise">Praise</option>
-                  <option value="other">Other</option>
-                </select>
+                  <SelectTrigger className="w-full" id="feedback-type">
+                    <SelectValue placeholder="Select feedback type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="suggestion">Feature Suggestion</SelectItem>
+                    <SelectItem value="bug">Bug Report</SelectItem>
+                    <SelectItem value="improvement">Improvement Idea</SelectItem>
+                    <SelectItem value="praise">Praise</SelectItem>
+                    <SelectItem value="complaint">Complaint</SelectItem>
+                    <SelectItem value="question">Question</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="space-y-2">
