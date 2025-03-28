@@ -157,6 +157,7 @@ const CreatePodcast = () => {
       setIsGeneratingThumbnail(true);
       
       try {
+        console.log("Calling AI generation with custom thumbnail prompt:", currentThumbnailPrompt);
         const { data, error } = await supabase.functions.invoke('ai-generation', {
           body: {
             action: 'generate-thumbnail',
@@ -164,7 +165,12 @@ const CreatePodcast = () => {
           }
         });
         
-        if (error) throw new Error(error.message);
+        if (error) {
+          console.error("Supabase function error:", error);
+          throw new Error(error.message);
+        }
+        
+        console.log("Thumbnail generation response:", data);
         
         if (data && data.imageUrl) {
           form.setValue("thumbnailUrl", data.imageUrl);
@@ -172,6 +178,9 @@ const CreatePodcast = () => {
             title: "Thumbnail Generated",
             description: "Custom thumbnail generated successfully"
           });
+        } else {
+          console.error("No image URL in response:", data);
+          throw new Error("No image URL returned from the API");
         }
       } catch (error) {
         console.error("Thumbnail generation error:", error);
@@ -214,6 +223,7 @@ const CreatePodcast = () => {
     setIsGeneratingThumbnail(true);
     
     try {
+      console.log("Calling AI generation with prompt:", thumbnailPrompt);
       const { data, error } = await supabase.functions.invoke('ai-generation', {
         body: {
           action: 'generate-thumbnail',
@@ -223,7 +233,12 @@ const CreatePodcast = () => {
         }
       });
       
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error("Supabase function error:", error);
+        throw new Error(error.message);
+      }
+      
+      console.log("Thumbnail generation response:", data);
       
       if (data && data.imageUrl) {
         form.setValue("thumbnailUrl", data.imageUrl);
@@ -231,6 +246,9 @@ const CreatePodcast = () => {
           title: "Thumbnail Generated",
           description: "AI thumbnail generated successfully"
         });
+      } else {
+        console.error("No image URL in response:", data);
+        throw new Error("No image URL returned from the API");
       }
     } catch (error) {
       console.error("Thumbnail generation error:", error);

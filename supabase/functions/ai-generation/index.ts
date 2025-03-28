@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -38,7 +37,11 @@ serve(async (req) => {
         // Use a more precise thumbnail generation based on specific keywords 
         const imageUrl = await getContextualUnsplashImage(finalPrompt);
         
-        return new Response(JSON.stringify({ imageUrl }), {
+        // Add a random query parameter to avoid caching issues
+        const cacheBuster = `?t=${Date.now()}`;
+        const finalImageUrl = `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}cb=${cacheBuster}`;
+        
+        return new Response(JSON.stringify({ imageUrl: finalImageUrl }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
